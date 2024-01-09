@@ -25,4 +25,5 @@ def stats():
         "states": storage.count("State"),
         "users": storage.count("User"),
     }
+    counts = storage.count()
     return jsonify(stats)

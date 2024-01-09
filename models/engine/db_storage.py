@@ -83,18 +83,19 @@ class DBStorage:
         return self.__session.query(cls).get(key)
 
     def count(self, cls=None):
+
         """Count the number of objects in storage."""
         classes = [State, City, Amenity, User, Place, Review]
 
         if cls:
             classes = [cls]  # If cls is provided, use only that class
 
-        counts = {}
+        counts = 0
         for cls in classes:
             try:
                 # Fix the issue by using the correct query
                 count = self.__session.query(func.count(cls.id)).scalar()
-                counts[cls.__name__] = len(count)
+                counts[cls.__name__] = count
             except Exception as e:
                 pass  # Handle the exception as needed
 
