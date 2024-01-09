@@ -4,7 +4,7 @@ Creates Flask app and register the blueprint app_views to Flask instance app.
 '''
 
 
-from flask import Flask
+from flask import Flask, jsonify
 from models import storage
 from api.v1.views import app_views
 import os
@@ -18,6 +18,14 @@ app.register_blueprint(app_views, url_prefix="/api/v1")
 def teardown(exception):
     """Removes the current SQLAlchemy session."""
     storage.close()
+
+# Add the 404 error handler
+
+
+@app.errorhandler(404)
+def not_found(error):
+    """Handles 404 errors and returns a JSON-formatted response."""
+    return jsonify({"error": "Not found"}), 404
 
 
 if __name__ == "__main__":
