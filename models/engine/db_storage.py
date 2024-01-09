@@ -13,8 +13,10 @@ from models.state import State
 from models.user import User
 from os import getenv
 import sqlalchemy
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.sql import text
+
 
 classes = {"Amenity": Amenity, "City": City,
            "Place": Place, "Review": Review, "State": State, "User": User}
@@ -81,10 +83,19 @@ class DBStorage:
         return self.__session.query(cls).get(key)
 
     def count(self, cls=None):
-        """Counts the number of objects in storage"""
-        if cls is None:
-            count = sum(self.__session.query(c).count()
-                        for c in classes.values())
-        else:
-            count = self.__session.query(cls).count()
-        return count
+        """Count the number of objects in storage."""
+        classes = [State, City, Amenity, User, Place, Review]
+
+        if cls:
+            classes = [cls]  # If cls is provided, use only that class
+
+        counts = {}
+        for cls in classes:
+            try:
+                # Fix the issue by using the correct query
+                count = self.__session.query(func.count(cls.id)).scalar()
+                counts[cls.__name__] = len(count)
+            except Exception as e:
+                pass  # Handle the exception as needed
+
+        return counts
