@@ -13,10 +13,8 @@ from models.state import State
 from models.user import User
 from os import getenv
 import sqlalchemy
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.sql import text
-
 
 classes = {"Amenity": Amenity, "City": City,
            "Place": Place, "Review": Review, "State": State, "User": User}
@@ -78,25 +76,21 @@ class DBStorage:
         self.__session.remove()
 
     def get(self, cls, id):
-        """Retrieves one object"""
-        key = "{}.{}".format(cls.__name__, id)
-        return self.__session.query(cls).get(key)
+        '''get:
+        retrieves an object from the file storage by class and id.
+        '''
+        if cls in classes.values() and id and type(id) == str:
+            d_obj = self.all(cls)
+            for key, value in d_obj.items():
+                if key.split(".")[1] == id:
+                    return value
+        return None
 
     def count(self, cls=None):
-
-        """Count the number of objects in storage."""
-        classes = [State, City, Amenity, User, Place, Review]
-
-        if cls:
-            classes = [cls]  # If cls is provided, use only that class
-
-        counts = 0
-        for cls in classes:
-            try:
-                # Fix the issue by using the correct query
-                count = self.__session.query(func.count(cls.id)).scalar()
-                counts[cls.__name__] = count
-            except Exception as e:
-                pass  # Handle the exception as needed
-
-        return counts
+        '''count:
+        counts the number of objects matching a given class.
+        '''
+        data = self.all(cls)
+        if cls in classes.values():
+            data = self.all(cls)
+        return len(data)

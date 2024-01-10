@@ -1,69 +1,137 @@
 #!/usr/bin/python3
-"""
-A Restful api for User
-"""
+'''
+Creates a new view for User object and handles RESTful API actions
+'''
 
-
-from flask import Flask, jsonify, abort, request
-from models import storage
+# Import necessary modules
+from flask import abort, jsonify, request
+# Import the User model
 from models.user import User
 from api.v1.views import app_views
+from models import storage
 
 
+# Route for retrieving all User objects
 @app_views.route('/users', methods=['GET'], strict_slashes=False)
-def get_users():
-    """Retrieves the list of all User objects"""
-    users = [user.to_dict() for user in storage.all(User).values()]
-    return jsonify(users)
+def get_all_users():
+    '''
+    retrieves a list of all User objects
+    '''
+    # Gets User objects from the storage and converts them to dictionaries
+    users = storage.all(User).values()
+    return jsonify([user.to_dict() for user in users])
 
 
+# Route for retrieving a specific User object by ID
 @app_views.route('/users/<user_id>', methods=['GET'], strict_slashes=False)
 def get_user(user_id):
-    """Retrieves a User object"""
+    '''
+    Retrieves a User object
+    '''
+    # Gets the User object with the given ID from the storage
     user = storage.get(User, user_id)
-    if user is None:
+    if user:
+        # Returns the User object in JSON format
+        return jsonify(user.to_dict())
+    else:
+        # Return 404 error if the User object is not found
         abort(404)
-    return jsonify(user.to_dict())
 
 
-@app_views.route('/users/<user_id>', methods=['DELETE'], strict_slashes=False)
+# Route for deleting a specific User object by ID
+@app_views.route('/users/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
-    """Deletes a User object"""
+    '''
+    Deletes a User object
+    '''
+    # Gets the User object with the given ID from the storage
     user = storage.get(User, user_id)
-    if user is None:
+    if user:
+        # Deletes the User object from the storage and save changes
+        storage.delete(user)
+        storage.save()
+        # Returns an empty JSON with 200 status code
+        return jsonify({}), 200
+    else:
+        # Returns 404 error if the User object is not found
         abort(404)
-    storage.delete(user)
-    storage.save()
-    return jsonify({}), 200
 
 
+# Route for creating a new User object
 @app_views.route('/users', methods=['POST'], strict_slashes=False)
 def create_user():
-    """Creates a User"""
+    '''
+    Creates a User object
+    '''
+    # Check if the request data is in JSON format
     if not request.get_json():
-        return jsonify({"error": "Not a JSON"}), 400
+        # Return 400 error if the request data is not in JSON format
+        abort(400, 'Not a JSON')
+
+    # Gets the JSON data from the request
     data = request.get_json()
     if 'email' not in data:
-        return jsonify({"error": "Missing email"}), 400
+        # Return 400 error if 'email' key is missing in the JSON data
+        abort(400, 'Missing email')
     if 'password' not in data:
-        return jsonify({"error": "Missing password"}), 400
-    new_user = User(**data)
-    storage.new(new_user)
-    storage.save()
-    return jsonify(new_user.to_dict()), 201
+        # Return 400 error if 'password' key is missing in the JSON data
+        abort(400, 'Missing password')
+
+    # Create a new User object with the JSON data
+    user = User(**data)
+    # Save the User object to the storage
+    user.save()
+    # Returns the newly created User object in JSON format with 201 status code
+    return jsonify(user.to_dict()), 201
 
 
+# Route for updating an existing User object by ID
 @app_views.route('/users/<user_id>', methods=['PUT'], strict_slashes=False)
 def update_user(user_id):
-    """Updates a User object"""
+    '''
+    Updates a User object
+    '''
+    # Get the User object with the given ID from the storage
     user = storage.get(User, user_id)
-    if user is None:
+    if user:
+        # Check if the request data is in JSON format
+        if not request.get_json():
+            # Return 400 error if the request data is not in JSON format
+            abort(400, 'Not a JSON')
+
+        # Get the JSON data from the request
+        data = request.get_json()
+        ignore_keys = ['id', 'email', 'created_at', 'updated_at']
+        # Update the attributes of the User object with the JSON data
+        for key, value in data.items():
+            if key not in ignore_keys:
+                setattr(user, key, value)
+
+        # Saves the updated User object to the storage
+        user.save()
+        # Return the updated User object in JSON format with 200 status code
+        return jsonify(user.to_dict()), 200
+    else:
+        # Returns 404 error if the User object is not found
         abort(404)
-    if not request.get_json():
-        return jsonify({"error": "Not a JSON"}), 400
-    data = request.get_json()
-    for key, value in data.items():
-        if key not in ('id', 'email', 'created_at', 'updated_at'):
-            setattr(user, key, value)
-    storage.save()
-    return jsonify(user.to_dict()), 200
+
+
+# Error Handlers:
+@app_views.errorhandler(404)
+def not_found(error):
+    '''
+    Returns 404: Not Found
+    '''
+    # Return a JSON response for 404 error
+    response = {'error': 'Not found'}
+    return jsonify(response), 404
+
+
+@app_views.errorhandler(400)
+def bad_request(error):
+    '''
+    Returns Bad Request message for illegal requests to the API
+    '''
+    # Return a JSON response for 400 error
+    response = {'error': 'Bad Request'}
+    return jsonify(response), 400
